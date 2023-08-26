@@ -10,6 +10,7 @@
 #ifdef CONFIG_IDF_TARGET_ESP32C3
 #define I2C_DEV_ADDR 0x55
 #define keyborad_BL_PIN  9
+#define keyboard_INT_PIN 8
 #define SDA  2
 #define SCL  10
 
@@ -133,6 +134,8 @@ void setup()
     pinMode(keyborad_BL_PIN, OUTPUT);
     digitalWrite(keyborad_BL_PIN, BL_state);
 
+    pinMode(keyboard_INT_PIN, OUTPUT);
+    digitalWrite(keyboard_INT_PIN, LOW);
 
     Serial.println("4");
     for (int x = 0; x < rowCount; x++) {
@@ -165,7 +168,7 @@ void loop()
         comdata_flag = true;
     }
     if (keyActive(0, 4) && keyPressed(3, 4)) { //Alt+B
-
+	comdata_flag = false;
         Serial.println("Alt+B");
         BL_state = !BL_state;
         set_keyborad_BL(BL_state);
@@ -174,6 +177,13 @@ void loop()
         Serial.println("Alt+C");
         comdata = (char)0x0C;
         comdata_flag = true;
+    }
+
+    // pulse interrupt line for esp32s3
+    if(comdata_flag == true){
+        digitalWrite(keyboard_INT_PIN, HIGH);
+    	delay(10);
+        digitalWrite(keyboard_INT_PIN, LOW);
     }
 }
 
