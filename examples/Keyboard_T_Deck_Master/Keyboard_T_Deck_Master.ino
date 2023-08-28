@@ -11,51 +11,55 @@
 
 #define LILYGO_KB_SLAVE_ADDRESS     0x55
 
+#define BOARD_POWERON 10
+#define BOARD_I2C_SDA 18
+#define BOARD_I2C_SCL 8
+#define BOARD_KB_INT 46
 
-#define BOARD_POWERON       10
-#define BOARD_I2C_SDA       18
-#define BOARD_I2C_SCL       8
+static volatile int keyboard_int = 0;
+static void IRAM_ATTR keyboard_isr(void) { keyboard_int = 1; }
 
+void setup() {
+  Serial.begin(115200);
 
-void setup()
-{
-    Serial.begin(115200);
+  Serial.println("T-Deck Keyboard Master");
 
-    Serial.println("T-Deck Keyboard Master");
+  //! ⚠️ The board peripheral power control pin needs to be set to HIGH when
+  //! using the peripheral
+  pinMode(BOARD_POWERON, OUTPUT);
+  digitalWrite(BOARD_POWERON, HIGH);
 
-    //!⚠️ The board peripheral power control pin needs to be set to HIGH when using the peripheral
-    pinMode(BOARD_POWERON, OUTPUT);
-    digitalWrite(BOARD_POWERON, HIGH);
+  pinMode(BOARD_KB_INT, INPUT);
+  attachInterrupt(BOARD_KB_INT, keyboard_isr, HIGH);
 
-    // There needs to be a delay after power on, give LILYGO-KEYBOARD some startup time
-    delay(500);
+  // There needs to be a delay after power on, give LILYGO-KEYBOARD some startup
+  // time
+  delay(500);
 
-    Wire.begin(BOARD_I2C_SDA, BOARD_I2C_SCL);
+  Wire.begin(BOARD_I2C_SDA, BOARD_I2C_SCL);
 
-    // Check keyboard
-    Wire.requestFrom(LILYGO_KB_SLAVE_ADDRESS, 1);
-    if (Wire.read() == -1) {
-        while (1) {
-            Serial.println("LILYGO Keyboad not online .");
-            delay(1000);
-        }
+  // Check keyboard
+  Wire.requestFrom(LILYGO_KB_SLAVE_ADDRESS, 1);
+  if (Wire.read() == -1) {
+    while (1) {
+      Serial.println("LILYGO Keyboad not online .");
+      delay(1000);
     }
+  }
 }
 
-void loop()
-{
+void loop() {
+  if (keyboard_int) {
+    keyboard_int = 0;
     // Read key value from esp32c3
     char keyValue = 0;
     Wire.requestFrom(LILYGO_KB_SLAVE_ADDRESS, 1);
     while (Wire.available() > 0) {
-        keyValue = Wire.read();
-        if (keyValue != (char)0x00) {
-            Serial.print("keyValue : ");
-            Serial.println(keyValue);
-        }
+      keyValue = Wire.read();
+      if (keyValue != (char)0x00) {
+        Serial.print("keyValue : ");
+        Serial.println(keyValue);
+      }
     }
-    delay(5);
+  }
 }
-
-
-
